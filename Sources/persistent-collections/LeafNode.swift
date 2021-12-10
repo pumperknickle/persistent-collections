@@ -4,6 +4,7 @@ struct LeafNode<V> {
     typealias PathSegment = Data
     let pathSegment: PathSegment
     let value: V
+    let count: Int
     
     func get(key: PathSegment, keyIndex: Int) -> V? {
         if key.compare(idx: keyIndex, other: pathSegment, otherIdx: 0, countSimilar: 0) == -1 {
@@ -14,13 +15,12 @@ struct LeafNode<V> {
         }
     }
     
-    func deleting(key: PathSegment, keyIndex: Int) -> Self? {
+    func deleting(key: PathSegment, keyIndex: Int, deletion: (V) -> (V, Bool)?) -> (Self, Bool)? {
         if key.compare(idx: keyIndex, other: pathSegment, otherIdx: 0, countSimilar: 0) == -1 {
-            return nil
+            guard let newValue = deletion(value) else { return nil }
+            if newValue.1 { return (Self(pathSegment: pathSegment, value: newValue.0, count: count - 1), true) }
         }
-        else {
-            return self
-        }
+        return (self, false)
     }
 }
 

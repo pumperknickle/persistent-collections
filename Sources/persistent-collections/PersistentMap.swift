@@ -19,20 +19,20 @@ public struct PersistentMap<Key: DataEncodable, Value> {
     
     public func setting(key: Key, to value: Value) -> Self {
         return combining(key: key, to: value) { lhs, rhs in
-            return rhs
+            return (rhs, 1)
         }
     }
     
-    public func combining(key: Key, to value: Value, combine: (Value, Value) -> Value) -> Self {
+    public func combining(key: Key, to value: Value, combine: (Value, Value) -> (Value, Int)) -> Self {
         let keyData = key.toData()
         if let root = root {
             switch root {
             case .internalNode(let internalNode):
-                let result = internalNode.value.combining(key: key.toData(), keyIndex: 0, value: value, combine: combine, replace: true)
-                let newMap = Self(root: Node.internalNode(Box<Internal>(result.0)), count: result.1 ? count + 1 : count)
+                let result = internalNode.value.combining(key: key.toData(), keyIndex: 0, value: value, valueCount: 1, combine: combine, replace: true)
+                let newMap = Self(root: Node.internalNode(Box<Internal>(result.0)), count: result.1)
                 return newMap
             case .leafNode(let leafType):
-                let result = Internal.combining(key: keyData, keyIndex: 0, value: value, combine: combine, replace: true, leaf: leafType)
+                let result = Internal.combining(key: keyData, keyIndex: 0, value: value, valueCount: 1, combine: combine, replace: true, leaf: leafType)
                 switch result {
                 case .internalNode:
                     return Self(root: result, count: 2)
@@ -42,7 +42,7 @@ public struct PersistentMap<Key: DataEncodable, Value> {
             }
         }
         else {
-            let newLeaf = InternalNode.LeafType(pathSegment: keyData, value: value)
+            let newLeaf = InternalNode.LeafType(pathSegment: keyData, value: value, count: 1)
             return Self(root: Node.leafNode(newLeaf), count: 1)
         }
     }
@@ -63,10 +63,10 @@ public struct PersistentMap<Key: DataEncodable, Value> {
     }
     
     public func overwrite(with other: Self) -> Self {
-        return merge(other: other, overwrite: { return $1 })
+        return merge(other: other, overwrite: { return ($1, 1) })
     }
     
-    public func merge(other: Self, overwrite: (Value, Value) -> Value) -> Self {
+    public func merge(other: Self, overwrite: (Value, Value) -> (Value, Int)) -> Self {
         guard let root = root else {
             return other
         }
@@ -80,16 +80,16 @@ public struct PersistentMap<Key: DataEncodable, Value> {
                 let newMerged = box.value.merging(other: otherBox.value, overwrite: overwrite)
                 return Self(root: Node.internalNode(Box(newMerged)), count: newMerged.getCount())
             case .leafNode(let otherLeafType):
-                let result = box.value.combining(key: otherLeafType.pathSegment, keyIndex: 0, value: otherLeafType.value, combine: overwrite, replace: true)
-                return Self(root: Node.internalNode(Box(result.0)), count: result.1 ? count + 1 : count)
+                let result = box.value.combining(key: otherLeafType.pathSegment, keyIndex: 0, value: otherLeafType.value, valueCount: 1, combine: overwrite, replace: true)
+                return Self(root: Node.internalNode(Box(result.0)), count: result.1)
             }
         case .leafNode(let leafType):
             switch otherRoot {
             case .internalNode(let box):
-                let result = box.value.combining(key: leafType.pathSegment, keyIndex: 0, value: leafType.value, combine: overwrite, replace: false)
-                return Self(root: Node.internalNode(Box(result.0)), count: result.1 ? count + 1 : count)
+                let result = box.value.combining(key: leafType.pathSegment, keyIndex: 0, value: leafType.value, valueCount: 1, combine: overwrite, replace: false)
+                return Self(root: Node.internalNode(Box(result.0)), count: result.1)
             case .leafNode(let otherLeafType):
-                let result = InternalNode.combining(leftLeaf: leafType, rightLeaf: otherLeafType, combine: overwrite)
+                let result = InternalNode.combining(leftLeaf: leafType, rightLeaf: otherLeafType, combine: overwrite, replace: true)
                 switch result {
                 case .internalNode:
                     return Self(root: result, count: 2)
@@ -100,12 +100,25 @@ public struct PersistentMap<Key: DataEncodable, Value> {
         }
     }
     
+    public func deletingA(key: Key) -> Self {
+        guard let root = root else { return self }
+        let keyData = key.toData()
+        switch root {
+        case .internalNode(let box):
+            let childResult = box.value.deleting(key: keyData, keyIndex: 0, deletion: { value in
+                return
+            }
+        case .leafNode(let leafType):
+            <#code#>
+        }
+    }
+    
     public func deleting(key: Key) -> Self {
         guard let root = root else { return self }
         let keyData = key.toData()
         switch root {
         case .internalNode(let box):
-            if let childResult = box.value.deleting(key: keyData, keyIndex: 0) {
+            if let childResult = box.value.deleting(key: keyData, keyIndex: 0, deletion: (Value) -> (Value, Bool)?) {
                 switch childResult {
                 case .internalNode(let newBox):
                     let newNode = Node.internalNode(newBox)

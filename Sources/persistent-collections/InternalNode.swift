@@ -33,48 +33,48 @@ struct InternalNode<V> {
         return nil
     }
     
-    static func combining(leftLeaf: LeafType, rightLeaf: LeafType, combine: (V, V) -> V) -> Node {
-        return combining(key: rightLeaf.pathSegment, keyIndex: 0, value: rightLeaf.value, combine: combine, replace: true, leaf: leftLeaf)
-    }
-    
-    static func combining(key: PathSegment, keyIndex: Int, value: V, combine: (V, V) -> V, replace: Bool, leaf: LeafType) -> Node {
-        let prefixComparisonResult = key.compare(idx: keyIndex, other: leaf.pathSegment, otherIdx: 0, countSimilar: 0)
+    static func combining(leftLeaf: LeafType, rightLeaf: LeafType, combine: (V, V) -> (V, Int), replace: Bool) -> Node {
+        let prefixComparisonResult = rightLeaf.pathSegment.compare(idx: 0, other: leftLeaf.pathSegment, otherIdx: 0, countSimilar: 0)
         switch prefixComparisonResult {
         case -3:
-            let newIndex = keyIndex + leaf.pathSegment.count
-            let next = key[newIndex]
-            let newLeaf = LeafType(pathSegment: PathSegment(key.dropFirst(newIndex)), value: value)
-            let newInternalNode = Box<Self>(Self(pathSegment: leaf.pathSegment, leafExistence: UInt256.zero.overwrite(byte: next, bit: true), nodeExistence: UInt256.zero, leaves: [newLeaf], nodes: [], value: leaf.value, count: 2))
+            let newIndex = leftLeaf.pathSegment.count
+            let next = rightLeaf.pathSegment[newIndex]
+            let newInternalNode = Box<Self>(Self(pathSegment: leftLeaf.pathSegment, leafExistence: UInt256.zero.overwrite(byte: next, bit: true), nodeExistence: UInt256.zero, leaves: [rightLeaf], nodes: [], value: leftLeaf.value, count: rightLeaf.count + leftLeaf.count))
             return Node.internalNode(newInternalNode)
         case -2:
-            let newIndex = key.count - keyIndex
-            let next = leaf.pathSegment[newIndex]
-            let newLeaf = LeafType(pathSegment: PathSegment(leaf.pathSegment.dropFirst(newIndex)), value: leaf.value)
-            let newInternalNode = Box<Self>(Self(pathSegment: PathSegment(key.dropFirst(keyIndex)), leafExistence: UInt256.zero.overwrite(byte: next, bit: true), nodeExistence: UInt256.zero, leaves: [newLeaf], nodes: [], value: leaf.value, count: 2))
+            let newIndex = rightLeaf.pathSegment.count
+            let next = leftLeaf.pathSegment[newIndex]
+            let newInternalNode = Box<Self>(Self(pathSegment: rightLeaf.pathSegment, leafExistence: UInt256.zero.overwrite(byte: next, bit: true), nodeExistence: UInt256.zero, leaves: [leftLeaf], nodes: [], value: rightLeaf.value, count: rightLeaf.count + leftLeaf.count))
             return Node.internalNode(newInternalNode)
         case -1:
-            let newLeaf = LeafType(pathSegment: PathSegment(leaf.pathSegment), value: replace ? combine(leaf.value, value) : combine(value, leaf.value))
+            let combineResult = replace ? combine(leftLeaf.value, rightLeaf.value) : combine(rightLeaf.value, leftLeaf.value)
+            let newLeaf = LeafType(pathSegment: leftLeaf.pathSegment, value: combineResult.0, count: combineResult.1)
             return Node.leafNode(newLeaf)
         default:
-            let parentPath = PathSegment(leaf.pathSegment.prefix(prefixComparisonResult))
-            let oldChildPath = PathSegment(leaf.pathSegment.dropFirst(prefixComparisonResult))
-            let newChildPath = PathSegment(key.dropFirst(keyIndex + prefixComparisonResult))
+            let parentPath = PathSegment(leftLeaf.pathSegment.prefix(prefixComparisonResult))
+            let oldChildPath = PathSegment(leftLeaf.pathSegment.dropFirst(prefixComparisonResult))
+            let newChildPath = PathSegment(rightLeaf.pathSegment.dropFirst(prefixComparisonResult))
             let oldPivot = oldChildPath.first!
             let newPivot = newChildPath.first!
-            let oldLeaf = LeafType(pathSegment: oldChildPath, value: leaf.value)
-            let newLeaf = LeafType(pathSegment: newChildPath, value: value)
+            let oldLeaf = LeafType(pathSegment: oldChildPath, value: leftLeaf.value, count: leftLeaf.count)
+            let newLeaf = LeafType(pathSegment: newChildPath, value: rightLeaf.value, count: rightLeaf.count)
             let leaves = oldPivot > newPivot ? [newLeaf, oldLeaf] : [oldLeaf, newLeaf]
             let newLeafExistence = UInt256.zero.overwrite(byte: oldPivot, bit: true).overwrite(byte: newPivot, bit: true)
-            let newInternalNode = Box<Self>(Self(pathSegment: parentPath, leafExistence: newLeafExistence, nodeExistence: UInt256.zero, leaves: leaves, nodes: [], value: nil, count: 2))
+            let newInternalNode = Box<Self>(Self(pathSegment: parentPath, leafExistence: newLeafExistence, nodeExistence: UInt256.zero, leaves: leaves, nodes: [], value: nil, count: leftLeaf.count + rightLeaf.count))
             return Node.internalNode(newInternalNode)
         }
     }
     
-    func combining(leaf: LeafType, combine: (V, V) -> V, replace: Bool) -> (Self, Bool) {
-        return combining(key: leaf.pathSegment, keyIndex: 0, value: leaf.value, combine: combine, replace: replace)
+    static func combining(key: PathSegment, keyIndex: Int, value: V, valueCount: Int, combine: (V, V) -> (V, Int), replace: Bool, leaf: LeafType) -> Node {
+        let rightLeaf = LeafType(pathSegment: key, value: value, count: valueCount)
+        return combining(leftLeaf: leaf, rightLeaf: rightLeaf, combine: combine, replace: replace)
     }
     
-    func combining(key: PathSegment, keyIndex: Int, value: V, combine: (V, V) -> V, replace: Bool) -> (Self, Bool) {
+    func combining(leaf: LeafType, combine: (V, V) -> (V, Int), replace: Bool) -> (Self, Int) {
+        return combining(key: leaf.pathSegment, keyIndex: 0, value: leaf.value, valueCount: leaf.count, combine: combine, replace: replace)
+    }
+    
+    func combining(key: PathSegment, keyIndex: Int, value: V, valueCount: Int, combine: (V, V) -> (V, Int), replace: Bool) -> (Self, Int) {
         let prefixComparisonResult = key.compare(idx: keyIndex, other: pathSegment, otherIdx: 0, countSimilar: 0)
         switch prefixComparisonResult {
         case -3:
@@ -82,35 +82,39 @@ struct InternalNode<V> {
             let next = key[newIndex]
             if leafExistence.exists(byte: next) {
                 let leafIndex = leafExistence.getStoredArrayIndex(byte: next) - 1
-                let mergeResult = Self.combining(key: key, keyIndex: newIndex, value: value, combine: combine, replace: replace, leaf: leaves[leafIndex])
+                let mergeResult = Self.combining(key: key, keyIndex: newIndex, value: value, valueCount: valueCount, combine: combine, replace: replace, leaf: leaves[leafIndex])
                 switch mergeResult {
                 case .internalNode(let internalNode):
-                    return (setInternalNode(at: next, node: internalNode), true)
+                    let newNode = setInternalNode(at: next, node: internalNode)
+                    return (newNode, newNode.count)
                 case .leafNode(let leafType):
-                    return (setLeafNode(at: next, node: leafType), false)
+                    let newNode = setLeafNode(at: next, node: leafType)
+                    return (newNode, newNode.count)
                 }
             }
             if nodeExistence.exists(byte: next) {
                 let nodeIndex = nodeExistence.getStoredArrayIndex(byte: next) - 1
-                let childNode = nodes[nodeIndex]
-                let settingResult = childNode.value.combining(key: key, keyIndex: newIndex, value: value, combine: combine, replace: replace)
-                return (setInternalNode(at: next, node: Box<Self>(settingResult.0), newCount: settingResult.1 ? count + 1 : count), settingResult.1)
+                let childNodeValue = nodes[nodeIndex].value
+                let settingResult = childNodeValue.combining(key: key, keyIndex: newIndex, value: value, valueCount: valueCount, combine: combine, replace: replace)
+                let newNode = setInternalNode(at: next, node: Box<Self>(settingResult.0), newCount: settingResult.1)
+                return (newNode, newNode.count)
             }
-            return (setLeafNode(at: next, node: LeafType(pathSegment: PathSegment(key.dropFirst(newIndex)), value: value)), true)
+            return (setLeafNode(at: next, node: LeafType(pathSegment: PathSegment(key.dropFirst(newIndex)), value: value, count: valueCount)), count + valueCount)
         case -2:
             let parentPath = key.dropFirst(keyIndex)
             let next = pathSegment[parentPath.count]
             let newChildNode = Box<Self>(Self(pathSegment: PathSegment(pathSegment.dropFirst(parentPath.count)), leafExistence: leafExistence, nodeExistence: nodeExistence, leaves: leaves, nodes: nodes, value: self.value, count: count))
-            let parentNode = InternalNode(pathSegment: PathSegment(parentPath), leafExistence: UInt256.zero, nodeExistence: UInt256.zero.overwrite(byte: next, bit: true), leaves: [], nodes: [newChildNode], value: value, count: count + 1)
-            return (parentNode, true)
+            let parentNode = InternalNode(pathSegment: PathSegment(parentPath), leafExistence: UInt256.zero, nodeExistence: UInt256.zero.overwrite(byte: next, bit: true), leaves: [], nodes: [newChildNode], value: value, count: count + valueCount)
+            return (parentNode, count + valueCount)
         case -1:
             if self.value != nil {
-                let newNode = InternalNode(pathSegment: pathSegment, leafExistence: leafExistence, nodeExistence: nodeExistence, leaves: leaves, nodes: nodes, value: value, count: count)
-                return (newNode, false)
+                let newNode = InternalNode(pathSegment: pathSegment, leafExistence: leafExistence, nodeExistence: nodeExistence, leaves: leaves, nodes: nodes, value: value, count: count + valueCount)
+                return (newNode, newNode.count)
             }
             else {
-                let newNode = InternalNode(pathSegment: pathSegment, leafExistence: leafExistence, nodeExistence: nodeExistence, leaves: leaves, nodes: nodes, value: value, count: count + 1)
-                return (newNode, true)
+                let combined = combine(value, self.value!)
+                let newNode = InternalNode(pathSegment: pathSegment, leafExistence: leafExistence, nodeExistence: nodeExistence, leaves: leaves, nodes: nodes, value: combined.0, count: count + combined.1)
+                return (newNode, newNode.count)
             }
         default:
             let parentPath = PathSegment(pathSegment.prefix(prefixComparisonResult))
@@ -119,9 +123,9 @@ struct InternalNode<V> {
             let oldNext = oldPath.first!
             let newNext = newPath.first!
             let oldNode = Box<Self>(InternalNode(pathSegment: oldPath, leafExistence: leafExistence, nodeExistence: nodeExistence, leaves: leaves, nodes: nodes, value: self.value, count: count))
-            let newLeaf = LeafType(pathSegment: newPath, value: value)
-            let parentNode = InternalNode(pathSegment: parentPath, leafExistence: UInt256.zero.overwrite(byte: newNext, bit: true), nodeExistence: UInt256.zero.overwrite(byte: oldNext, bit: true), leaves: [newLeaf], nodes: [oldNode], value: nil, count: count + 1)
-            return (parentNode, true)
+            let newLeaf = LeafType(pathSegment: newPath, value: value, count: valueCount)
+            let parentNode = InternalNode(pathSegment: parentPath, leafExistence: UInt256.zero.overwrite(byte: newNext, bit: true), nodeExistence: UInt256.zero.overwrite(byte: oldNext, bit: true), leaves: [newLeaf], nodes: [oldNode], value: nil, count: count + valueCount)
+            return (parentNode, parentNode.count)
         }
     }
     
@@ -164,30 +168,34 @@ struct InternalNode<V> {
     
     // if return is nil, no key to delete
     // if return is not nil, a key was deleted
-    func deleting(key: PathSegment, keyIndex: Int) -> Node? {
+    func deleting(key: PathSegment, keyIndex: Int, deletion: (V) -> (V, Bool)?) -> Node? {
         if !key.startsWith(idx: keyIndex, other: pathSegment) { return nil }
         // removing value at this node
         let newIndex = keyIndex + pathSegment.count
         if key.count == newIndex {
-            // Check if needs compaction
-            if leaves.count == 1 && nodes.isEmpty {
-                let oldLeaf = leaves.first!
-                let newLeaf = LeafType(pathSegment: pathSegment + oldLeaf.pathSegment, value: oldLeaf.value)
-                return Node.leafNode(newLeaf)
-            }
-            if leaves.isEmpty && nodes.count == 1 {
-                let oldNode = nodes.first!.value
-                let newNode = Box(InternalNode(pathSegment: pathSegment + oldNode.pathSegment, leafExistence: oldNode.leafExistence, nodeExistence: oldNode.nodeExistence, leaves: oldNode.leaves, nodes: oldNode.nodes, value: oldNode.value, count: oldNode.count))
-                return Node.internalNode(newNode)
+            guard let value = value else { return nil }
+            let newValue = deletion(value)
+            if newValue == nil {
+                // Check if needs compaction
+                if leaves.count == 1 && nodes.isEmpty {
+                    let oldLeaf = leaves.first!
+                    let newLeaf = LeafType(pathSegment: pathSegment + oldLeaf.pathSegment, value: oldLeaf.value, count: 1)
+                    return Node.leafNode(newLeaf)
+                }
+                if leaves.isEmpty && nodes.count == 1 {
+                    let oldNode = nodes.first!.value
+                    let newNode = Box(InternalNode(pathSegment: pathSegment + oldNode.pathSegment, leafExistence: oldNode.leafExistence, nodeExistence: oldNode.nodeExistence, leaves: oldNode.leaves, nodes: oldNode.nodes, value: oldNode.value, count: oldNode.count))
+                    return Node.internalNode(newNode)
+                }
             }
             // No compaction needed
-            let newSelf = Box(Self(pathSegment: pathSegment, leafExistence: leafExistence, nodeExistence: nodeExistence, leaves: leaves, nodes: nodes, value: nil, count: count - 1))
+            let newSelf = Box(Self(pathSegment: pathSegment, leafExistence: leafExistence, nodeExistence: nodeExistence, leaves: leaves, nodes: nodes, value: newValue!.0, count: newValue!.1 ? count - 1: count))
             return Node.internalNode(newSelf)
         }
         let next = key[newIndex]
         if nodeExistence.exists(byte: next) {
             let nodeIndex = nodeExistence.getStoredArrayIndex(byte: next) - 1
-            let childResult = nodes[nodeIndex].value.deleting(key: key, keyIndex: newIndex)
+            let childResult = nodes[nodeIndex].value.deleting(key: key, keyIndex: newIndex, deletion: deletion)
             if let childResult = childResult {
                 switch childResult {
                 case .internalNode(let box):
@@ -202,12 +210,16 @@ struct InternalNode<V> {
         }
         if leafExistence.exists(byte: next) {
             let leafIndex = leafExistence.getStoredArrayIndex(byte: next) - 1
-            let childResult = leaves[leafIndex].deleting(key: key, keyIndex: newIndex)
-            if childResult != nil { return nil }
+            let childResult = leaves[leafIndex].deleting(key: key, keyIndex: newIndex, deletion: deletion)
+            if childResult != nil && !childResult!.1 { return nil }
+            if let childResult = childResult {
+                if !childResult.1 { return nil }
+                
+            }
             if leaves.count == 2 && nodes.isEmpty && value == nil {
                 let otherIndex = leafIndex == 1 ? 0 : 1
                 let oldLeaf = leaves[otherIndex]
-                let newLeaf = LeafType(pathSegment: pathSegment + oldLeaf.pathSegment, value: oldLeaf.value)
+                let newLeaf = LeafType(pathSegment: pathSegment + oldLeaf.pathSegment, value: oldLeaf.value, count: oldLeaf.count)
                 return Node.leafNode(newLeaf)
             }
             if leaves.count == 1 && nodes.count == 1 && value == nil {
@@ -216,14 +228,21 @@ struct InternalNode<V> {
                 return Node.internalNode(newNode)
             }
             if leaves.count == 1 && nodes.isEmpty && value != nil {
-                let newLeaf = LeafType(pathSegment: pathSegment, value: value!)
-                return Node.leafNode(newLeaf)
+                let oldLeaf = leaves.first!
+                let result = oldLeaf.deleting(key: key, keyIndex: newIndex, deletion: deletion)
+                guard let result = result else {
+                    let newLeaf = LeafType(pathSegment: pathSegment, value: value!, count: count - oldLeaf.count)
+                    return Node.leafNode(newLeaf)
+                }
+                if !result.1 { return nil }
+                let newNode = setLeafNode(at: next, node: result.0)
+                return Node.internalNode(Box(newNode))
             }
         }
         return nil
     }
     
-    func merging(other: Self, overwrite: (V, V) -> V) -> Self {
+    func merging(other: Self, overwrite: (V, V) -> (V, Int)) -> Self {
         let comparisonResult = self.pathSegment.compare(idx: 0, other: other.pathSegment, otherIdx: 0, countSimilar: 0)
         switch comparisonResult {
         case -3:
@@ -270,7 +289,7 @@ struct InternalNode<V> {
         }
     }
    
-    func mergeNodes(other: Self, overwrite: (V, V) -> V) -> Self {
+    func mergeNodes(other: Self, overwrite: (V, V) -> (V, Int)) -> Self {
         let allLeaves = self.leafExistence | other.leafExistence
         let allInternal = self.nodeExistence | other.nodeExistence
         let allExistence = allLeaves | allInternal
@@ -285,7 +304,7 @@ struct InternalNode<V> {
                 let leaf = leafTarget.leaves[leafIdx]
                 let node = nodeTarget.nodes[nodeIdx].value
                 let result = node.combining(leaf: leaf, combine: overwrite, replace: !selfLeafExists)
-                return (idx, result.0, nil, result.1 ? (node.count + 1) : node.count)
+                return (idx, result.0, nil, result.1)
             }
             if allLeaves.exists(byte: idx) {
                 let selfLeafExists = self.leafExistence.exists(byte: idx)
@@ -296,19 +315,19 @@ struct InternalNode<V> {
                     if otherLeafExists {
                         let otherIdx = other.leafExistence.getStoredArrayIndex(byte: idx) - 1
                         let otherLeaf = other.leaves[otherIdx]
-                        let result = Self.combining(leftLeaf: selfLeaf, rightLeaf: otherLeaf, combine: overwrite)
+                        let result = Self.combining(leftLeaf: selfLeaf, rightLeaf: otherLeaf, combine: overwrite, replace: true)
                         switch result {
                         case .leafNode(let leaf):
-                            return (idx, nil, leaf, 1)
+                            return (idx, nil, leaf, leaf.count)
                         case .internalNode(let intern):
-                            return (idx, intern.value, nil, 2)
+                            return (idx, intern.value, nil, selfLeaf.count + otherLeaf.count)
                         }
                     }
-                    return (idx, nil, selfLeaf, 1)
+                    return (idx, nil, selfLeaf, selfLeaf.count)
                 }
                 let otherIdx = other.leafExistence.getStoredArrayIndex(byte: idx) - 1
                 let otherLeaf = other.leaves[otherIdx]
-                return (idx, nil, otherLeaf, 1)
+                return (idx, nil, otherLeaf, otherLeaf.count)
             }
             let selfNodeExists = self.nodeExistence.exists(byte: idx)
             if selfNodeExists {
@@ -334,15 +353,15 @@ struct InternalNode<V> {
         let newLeafExistence = UInt256(indices: leafTuples.map { $0.0 })
         let newNodes = internalTuples.map { Box($0.1) }
         let newLeaves = leafTuples.map { $0.1 }
-        let childCounts = leafTuples.count + (internalTuples.map { $0.2 }.reduce(0, +))
+        let childCounts = newLeaves.map { $0.count }.reduce(0, +) + (internalTuples.map { $0.2 }.reduce(0, +))
         if let selfValue = self.value {
             if let otherValue = other.value {
-                return Self(pathSegment: pathSegment, leafExistence: newLeafExistence, nodeExistence: newNodeExistence, leaves: newLeaves, nodes: newNodes, value: overwrite(selfValue, otherValue), count: childCounts + 1)
+                return Self(pathSegment: pathSegment, leafExistence: newLeafExistence, nodeExistence: newNodeExistence, leaves: newLeaves, nodes: newNodes, value: overwrite(selfValue, otherValue).0, count: childCounts + overwrite(selfValue, otherValue).1)
             }
-            return Self(pathSegment: pathSegment, leafExistence: newLeafExistence, nodeExistence: newNodeExistence, leaves: newLeaves, nodes: newNodes, value: selfValue, count: childCounts + 1)
+            return Self(pathSegment: pathSegment, leafExistence: newLeafExistence, nodeExistence: newNodeExistence, leaves: newLeaves, nodes: newNodes, value: selfValue, count: childCounts + overwrite(selfValue, selfValue).1)
         }
         if let otherValue = other.value {
-            return Self(pathSegment: pathSegment, leafExistence: newLeafExistence, nodeExistence: newNodeExistence, leaves: newLeaves, nodes: newNodes, value: otherValue, count: childCounts + 1)
+            return Self(pathSegment: pathSegment, leafExistence: newLeafExistence, nodeExistence: newNodeExistence, leaves: newLeaves, nodes: newNodes, value: otherValue, count: childCounts + overwrite(otherValue, otherValue).1)
         }
         return Self(pathSegment: pathSegment, leafExistence: newLeafExistence, nodeExistence: newNodeExistence, leaves: newLeaves, nodes: newNodes, value: nil, count: childCounts)
     }
