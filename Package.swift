@@ -12,13 +12,15 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/pumperknickle/Bedrock.git", from: "0.2.4"),
+        .package(url: "https://github.com/apple/swift-algorithms.git", .exact("1.0.0")),
         .package(url: "https://github.com/Quick/Quick.git", from: "3.1.2"),
         .package(url: "https://github.com/Quick/Nimble.git", from: "9.0.0"),
     ],
     targets: [
         .target(
             name: "persistent-collections",
-            dependencies: ["Bedrock"]),
+            dependencies: [.product(name: "Algorithms", package: "swift-algorithms"),
+                           .product(name: "Bedrock", package: "Bedrock"),]),
         .testTarget(
             name: "persistent-collectionsTests",
             dependencies: ["persistent-collections", "Quick", "Nimble", "Bedrock"]),

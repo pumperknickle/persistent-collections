@@ -12,6 +12,16 @@ public struct PersistentMap<Key: DataEncodable, Value> {
         self.init(root: nil, count: 0)
     }
     
+    public init(dictionaryLiteral elements: [(Key, Value)]) {
+        self = elements.reduce(Self()) { result, entry in
+            return result.setting(key: entry.0, to: entry.1)
+        }
+    }
+    
+//    public func getElements() -> [(Key, Value)] {
+//
+//    }
+    
     init(root: Node?, count: Int) {
         self.root = root
         self.count = count
@@ -156,5 +166,24 @@ extension PersistentMap: Equatable where Value: Equatable {
             }
         }
         return false
+    }
+}
+
+extension PersistentMap: Codable where Key: LosslessStringConvertible, Value: Codable {
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let stringDictionary = try container.decode([String: Value].self)
+        var elements = [(Key, Value)]()
+        for (stringKey, value) in stringDictionary {
+            guard let key = Key(stringKey) else {
+                throw DecodingError.dataCorruptedError(in: container, debugDescription: "Invalid key '\(stringKey)'")
+            }
+            elements.append((key, value))
+        }
+        self.init(dictionaryLiteral: elements)
+    }
+    
+    public func encode(to encoder: Encoder) throws {
+        
     }
 }

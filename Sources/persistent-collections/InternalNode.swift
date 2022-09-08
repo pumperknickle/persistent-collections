@@ -1,5 +1,6 @@
 import Foundation
 import Bedrock
+import Algorithms
 
 struct InternalNode<V> {
     typealias LeafType = LeafNode<V>
@@ -50,7 +51,7 @@ struct InternalNode<V> {
             let newIndex = key.count - keyIndex
             let next = leaf.pathSegment[newIndex]
             let newLeaf = LeafType(pathSegment: PathSegment(leaf.pathSegment.dropFirst(newIndex)), value: leaf.value)
-            let newInternalNode = Box<Self>(Self(pathSegment: PathSegment(key.dropFirst(keyIndex)), leafExistence: UInt256.zero.overwrite(byte: next, bit: true), nodeExistence: UInt256.zero, leaves: [newLeaf], nodes: [], value: leaf.value, count: 2))
+            let newInternalNode = Box<Self>(Self(pathSegment: PathSegment(key.dropFirst(keyIndex)), leafExistence: UInt256.zero.overwrite(byte: next, bit: true), nodeExistence: UInt256.zero, leaves: [newLeaf], nodes: [], value: value, count: 2))
             return Node.internalNode(newInternalNode)
         case -1:
             let newLeaf = LeafType(pathSegment: PathSegment(leaf.pathSegment), value: replace ? combine(leaf.value, value) : combine(value, leaf.value))
@@ -422,7 +423,7 @@ extension Array {
         if index == 0 {
             return [element] + self
         }
-        if index == count - 1 {
+        if index == count {
             return self + [element]
         }
         return Array(self[0..<index] + [element] + self[index..<self.count])
