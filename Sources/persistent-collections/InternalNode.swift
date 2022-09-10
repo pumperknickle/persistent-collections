@@ -225,7 +225,7 @@ struct InternalNode<V> {
         switch comparisonResult {
         case -3:
             let newIndex = other.pathSegment.count
-            let newNode = Self(pathSegment: pathSegment.dropFirst(newIndex), leafExistence: leafExistence, nodeExistence: nodeExistence, leaves: leaves, nodes: nodes, value: value)
+            let newNode = Self(pathSegment: Data(pathSegment.dropFirst(newIndex)), leafExistence: leafExistence, nodeExistence: nodeExistence, leaves: leaves, nodes: nodes, value: value)
             let next = pathSegment[newIndex]
             if other.nodeExistence.exists(byte: next) {
                 let nodeIndex = other.nodeExistence.getStoredArrayIndex(byte: next) - 1
@@ -234,12 +234,24 @@ struct InternalNode<V> {
                 let newOtherNodes = other.nodes.replacing(element: Box(mergedNode), at: nodeIndex)
                 return Self(pathSegment: other.pathSegment, leafExistence: other.leafExistence, nodeExistence: other.nodeExistence, leaves: other.leaves, nodes: newOtherNodes, value: other.value)
             }
+            if other.leafExistence.exists(byte: next) {
+                let leafIndex = other.leafExistence.getStoredArrayIndex(byte: next) - 1
+                let childLeaf = other.leaves[leafIndex]
+                let newLeaves = other.leaves.removing(at: leafIndex)
+                let newLeafExistence = other.leafExistence.overwrite(byte: next, bit: false)
+                let addedNode = newNode.combining(key: childLeaf.pathSegment, keyIndex: 0, value: childLeaf.value, combine: overwrite, replace: false)
+                let nodeIndex = other.nodeExistence.getStoredArrayIndex(byte: next)
+                let newOtherNodes = other.nodes.inserting(element: Box(addedNode), at: nodeIndex)
+                let newNodeExistence = other.nodeExistence.overwrite(byte: next, bit: true)
+                return Self(pathSegment: other.pathSegment, leafExistence: newLeafExistence, nodeExistence: newNodeExistence, leaves: newLeaves, nodes: newOtherNodes, value: other.value)
+            }
             let nodeIndex = other.nodeExistence.getStoredArrayIndex(byte: next)
-            let newOtherNodes = other.nodes.replacing(element: Box(newNode), at: nodeIndex)
-            return Self(pathSegment: other.pathSegment, leafExistence: other.leafExistence, nodeExistence: other.nodeExistence, leaves: other.leaves, nodes: newOtherNodes, value: other.value)
+            let newOtherNodes = other.nodes.inserting(element: Box(newNode), at: nodeIndex)
+            let newNodeExistence = other.nodeExistence.overwrite(byte: next, bit: true)
+            return Self(pathSegment: other.pathSegment, leafExistence: other.leafExistence, nodeExistence: newNodeExistence, leaves: other.leaves, nodes: newOtherNodes, value: other.value)
         case -2:
             let newIndex = pathSegment.count
-            let newNode = Self(pathSegment: other.pathSegment.dropFirst(newIndex), leafExistence: other.leafExistence, nodeExistence: other.nodeExistence, leaves: other.leaves, nodes: other.nodes, value: other.value)
+            let newNode = Self(pathSegment: Data(other.pathSegment.dropFirst(newIndex)), leafExistence: other.leafExistence, nodeExistence: other.nodeExistence, leaves: other.leaves, nodes: other.nodes, value: other.value)
             let next = other.pathSegment[newIndex]
             if nodeExistence.exists(byte: next) {
                 let nodeIndex = nodeExistence.getStoredArrayIndex(byte: next) - 1
@@ -248,9 +260,21 @@ struct InternalNode<V> {
                 let newOtherNodes = nodes.replacing(element: Box(mergedNode), at: nodeIndex)
                 return Self(pathSegment: pathSegment, leafExistence: leafExistence, nodeExistence: nodeExistence, leaves: leaves, nodes: newOtherNodes, value: value)
             }
+            if leafExistence.exists(byte: next) {
+                let leafIndex = leafExistence.getStoredArrayIndex(byte: next) - 1
+                let childLeaf = leaves[leafIndex]
+                let newLeaves = leaves.removing(at: leafIndex)
+                let newLeafExistence = leafExistence.overwrite(byte: next, bit: false)
+                let addedNode = newNode.combining(key: childLeaf.pathSegment, keyIndex: 0, value: childLeaf.value, combine: overwrite, replace: true)
+                let nodeIndex = nodeExistence.getStoredArrayIndex(byte: next)
+                let newOtherNodes = nodes.inserting(element: Box(addedNode), at: nodeIndex)
+                let newNodeExistence = nodeExistence.overwrite(byte: next, bit: true)
+                return Self(pathSegment: pathSegment, leafExistence: newLeafExistence, nodeExistence: newNodeExistence, leaves: newLeaves, nodes: newOtherNodes, value: value)
+            }
             let nodeIndex = nodeExistence.getStoredArrayIndex(byte: next)
-            let newOtherNodes = nodes.replacing(element: Box(newNode), at: nodeIndex)
-            return Self(pathSegment: pathSegment, leafExistence: leafExistence, nodeExistence: nodeExistence, leaves: leaves, nodes: newOtherNodes, value: value)
+            let newOtherNodes = nodes.inserting(element: Box(newNode), at: nodeIndex)
+            let newNodeExistence = nodeExistence.overwrite(byte: next, bit: true)
+            return Self(pathSegment: pathSegment, leafExistence: leafExistence, nodeExistence: newNodeExistence, leaves: leaves, nodes: newOtherNodes, value: value)
         case -1:
             return mergeNodes(other: other, overwrite: overwrite)
         default:
@@ -274,6 +298,7 @@ struct InternalNode<V> {
         let allIdx = (allExistence).getIndices()
         let finalNodes = allIdx.map { idx -> (UInt8, Self?, LeafType?) in
             if allLeaves.exists(byte: idx) && allInternal.exists(byte: idx) {
+                print("a10")
                 let selfLeafExists = self.leafExistence.exists(byte: idx)
                 let leafTarget = selfLeafExists ? self : other
                 let nodeTarget = selfLeafExists ? other : self
