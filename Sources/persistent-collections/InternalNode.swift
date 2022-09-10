@@ -298,7 +298,6 @@ struct InternalNode<V> {
         let allIdx = (allExistence).getIndices()
         let finalNodes = allIdx.map { idx -> (UInt8, Self?, LeafType?) in
             if allLeaves.exists(byte: idx) && allInternal.exists(byte: idx) {
-                print("a10")
                 let selfLeafExists = self.leafExistence.exists(byte: idx)
                 let leafTarget = selfLeafExists ? self : other
                 let nodeTarget = selfLeafExists ? other : self
