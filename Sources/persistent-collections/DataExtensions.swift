@@ -1,12 +1,12 @@
 import Foundation
 
-extension ArraySlice where Element == UInt8 {
+extension Data {
     
     // return -3 if self starts with other
     // return -2 if other starts with self
     // return -1 if self == other
     // return number of similar starting elements
-    func compare(idx: Int, other: Self, otherIdx: Int, countSimilar: Int) -> Int {
+    func compare(idx: Int, other: Data, otherIdx: Int, countSimilar: Int) -> Int {
         if otherIdx >= other.count && idx >= self.count { return -1 }
         if otherIdx >= other.count { return -3 }
         if idx >= self.count { return -2 }
@@ -16,12 +16,12 @@ extension ArraySlice where Element == UInt8 {
         return countSimilar
     }
     
-    func startsWith(idx: Int, other: Self) -> Bool {
+    func startsWith(idx: Int, other: Data) -> Bool {
         if other.count > count - idx { return false }
         return startsWith(idx: idx, other: other, otherIdx: 0)
     }
     
-    func startsWith(idx: Int, other: Self, otherIdx: Int) -> Bool {
+    func startsWith(idx: Int, other: Data, otherIdx: Int) -> Bool {
         if otherIdx >= other.count {
             return true }
         if idx >= self.count {

@@ -41,11 +41,11 @@ public struct PersistentMap<Key: DataEncodable, Value> {
         if let root = root {
             switch root {
             case .internalNode(let internalNode):
-                let result = internalNode.value.combining(key: ArraySlice(keyData), keyIndex: 0, value: value, combine: combine, replace: true)
+                let result = internalNode.value.combining(key: key.toData(), keyIndex: 0, value: value, combine: combine, replace: true)
                 let newMap = Self(root: Node.internalNode(Box<Internal>(result)))
                 return newMap
             case .leafNode(let leafType):
-                let result = Internal.combining(key: ArraySlice(keyData), keyIndex: 0, value: value, combine: combine, replace: true, leaf: leafType)
+                let result = Internal.combining(key: keyData, keyIndex: 0, value: value, combine: combine, replace: true, leaf: leafType)
                 switch result {
                 case .internalNode:
                     return Self(root: result)
@@ -55,7 +55,7 @@ public struct PersistentMap<Key: DataEncodable, Value> {
             }
         }
         else {
-            let newLeaf = InternalNode.LeafType(pathSegment: ArraySlice(keyData), value: value)
+            let newLeaf = InternalNode.LeafType(pathSegment: keyData, value: value)
             return Self(root: Node.leafNode(newLeaf))
         }
     }
@@ -65,9 +65,9 @@ public struct PersistentMap<Key: DataEncodable, Value> {
         let keyData = key.toData()
         switch root {
         case .internalNode(let internalNode):
-            return internalNode.value.get(key:ArraySlice(keyData), keyIndex: 0)
+            return internalNode.value.get(key:keyData, keyIndex: 0)
         case .leafNode(let leafType):
-            return leafType.get(key: ArraySlice(keyData), keyIndex: 0)
+            return leafType.get(key: keyData, keyIndex: 0)
         }
     }
     
@@ -118,7 +118,7 @@ public struct PersistentMap<Key: DataEncodable, Value> {
         let keyData = key.toData()
         switch root {
         case .internalNode(let box):
-            if let childResult = box.value.deleting(key: ArraySlice(keyData), keyIndex: 0) {
+            if let childResult = box.value.deleting(key: keyData, keyIndex: 0) {
                 switch childResult {
                 case .internalNode(let newBox):
                     let newNode = Node.internalNode(newBox)
@@ -130,7 +130,7 @@ public struct PersistentMap<Key: DataEncodable, Value> {
             }
             return self
         case .leafNode(let leafType):
-            if let childResult = leafType.deleting(key: ArraySlice(keyData), keyIndex: 0) {
+            if let childResult = leafType.deleting(key: keyData, keyIndex: 0) {
                 return Self(root: Node.leafNode(childResult))
             }
             return Self(root: nil)

@@ -1,7 +1,7 @@
 import Foundation
 
 struct LeafNode<V> {
-    typealias PathSegment = ArraySlice<UInt8>
+    typealias PathSegment = Data
     let pathSegment: PathSegment
     let value: V
     
