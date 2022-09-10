@@ -225,7 +225,7 @@ struct InternalNode<V> {
         switch comparisonResult {
         case -3:
             let newIndex = other.pathSegment.count
-            let newNode = Self(pathSegment: Data(pathSegment.dropFirst(newIndex)), leafExistence: leafExistence, nodeExistence: nodeExistence, leaves: leaves, nodes: nodes, value: value)
+            let newNode = Self(pathSegment: PathSegment(pathSegment.dropFirst(newIndex)), leafExistence: leafExistence, nodeExistence: nodeExistence, leaves: leaves, nodes: nodes, value: value)
             let next = pathSegment[newIndex]
             if other.nodeExistence.exists(byte: next) {
                 let nodeIndex = other.nodeExistence.getStoredArrayIndex(byte: next) - 1
@@ -251,7 +251,7 @@ struct InternalNode<V> {
             return Self(pathSegment: other.pathSegment, leafExistence: other.leafExistence, nodeExistence: newNodeExistence, leaves: other.leaves, nodes: newOtherNodes, value: other.value)
         case -2:
             let newIndex = pathSegment.count
-            let newNode = Self(pathSegment: Data(other.pathSegment.dropFirst(newIndex)), leafExistence: other.leafExistence, nodeExistence: other.nodeExistence, leaves: other.leaves, nodes: other.nodes, value: other.value)
+            let newNode = Self(pathSegment: PathSegment(other.pathSegment.dropFirst(newIndex)), leafExistence: other.leafExistence, nodeExistence: other.nodeExistence, leaves: other.leaves, nodes: other.nodes, value: other.value)
             let next = other.pathSegment[newIndex]
             if nodeExistence.exists(byte: next) {
                 let nodeIndex = nodeExistence.getStoredArrayIndex(byte: next) - 1
