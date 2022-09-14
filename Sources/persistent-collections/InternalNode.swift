@@ -29,6 +29,18 @@ struct InternalNode<V> {
         return nil
     }
     
+    func getValue() -> V? {
+        return value
+    }
+    
+    func getPathSegment() -> PathSegment {
+        return self.pathSegment
+    }
+    
+    func getChildren() -> [Node] {
+        return nodes.map { Node.internalNode($0) } + leaves.map { Node.leafNode($0) }
+    }
+    
     static func combining(leftLeaf: LeafType, rightLeaf: LeafType, combine: (V, V) -> V) -> Node {
         return combining(key: rightLeaf.pathSegment, keyIndex: 0, value: rightLeaf.value, combine: combine, replace: true, leaf: leftLeaf)
     }
@@ -66,7 +78,7 @@ struct InternalNode<V> {
         }
     }
     
-    func combining(leaf: LeafType, combine: (V, V) -> V, replace: Bool) -> Self {
+    private func combining(leaf: LeafType, combine: (V, V) -> V, replace: Bool) -> Self {
         return combining(key: leaf.pathSegment, keyIndex: 0, value: leaf.value, combine: combine, replace: replace)
     }
     
@@ -101,7 +113,7 @@ struct InternalNode<V> {
             return parentNode
         case -1:
             if self.value != nil {
-                let newNode = InternalNode(pathSegment: pathSegment, leafExistence: leafExistence, nodeExistence: nodeExistence, leaves: leaves, nodes: nodes, value: value)
+                let newNode = InternalNode(pathSegment: pathSegment, leafExistence: leafExistence, nodeExistence: nodeExistence, leaves: leaves, nodes: nodes, value: replace ? value : self.value)
                 return newNode
             }
             else {
@@ -239,7 +251,7 @@ struct InternalNode<V> {
                 let childLeaf = other.leaves[leafIndex]
                 let newLeaves = other.leaves.removing(at: leafIndex)
                 let newLeafExistence = other.leafExistence.overwrite(byte: next, bit: false)
-                let addedNode = newNode.combining(key: childLeaf.pathSegment, keyIndex: 0, value: childLeaf.value, combine: overwrite, replace: false)
+                let addedNode = newNode.combining(key: childLeaf.pathSegment, keyIndex: 0, value: childLeaf.value, combine: overwrite, replace: true)
                 let nodeIndex = other.nodeExistence.getStoredArrayIndex(byte: next)
                 let newOtherNodes = other.nodes.inserting(element: Box(addedNode), at: nodeIndex)
                 let newNodeExistence = other.nodeExistence.overwrite(byte: next, bit: true)
@@ -265,7 +277,7 @@ struct InternalNode<V> {
                 let childLeaf = leaves[leafIndex]
                 let newLeaves = leaves.removing(at: leafIndex)
                 let newLeafExistence = leafExistence.overwrite(byte: next, bit: false)
-                let addedNode = newNode.combining(key: childLeaf.pathSegment, keyIndex: 0, value: childLeaf.value, combine: overwrite, replace: true)
+                let addedNode = newNode.combining(key: childLeaf.pathSegment, keyIndex: 0, value: childLeaf.value, combine: overwrite, replace: false)
                 let nodeIndex = nodeExistence.getStoredArrayIndex(byte: next)
                 let newOtherNodes = nodes.inserting(element: Box(addedNode), at: nodeIndex)
                 let newNodeExistence = nodeExistence.overwrite(byte: next, bit: true)
@@ -291,7 +303,7 @@ struct InternalNode<V> {
         }
     }
    
-    func mergeNodes(other: Self, overwrite: (V, V) -> V) -> Self {
+    private func mergeNodes(other: Self, overwrite: (V, V) -> V) -> Self {
         let allLeaves = self.leafExistence | other.leafExistence
         let allInternal = self.nodeExistence | other.nodeExistence
         let allExistence = allLeaves | allInternal

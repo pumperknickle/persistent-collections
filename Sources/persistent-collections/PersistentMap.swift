@@ -17,14 +17,32 @@ public struct PersistentMap<Key: DataEncodable, Value> {
         }
     }
     
-//    public func getElements() -> [(Key, Value)] {
-//        var stack = Stack<(Leaf.PathSegment, Node)>()
-//        var elements = [(Key, Value)]()
-//        guard let root = root else { return [] }
-//        stack.push((Leaf.PathSegment(), root))
-//        
-//        return []
-//    }
+    public func getElements() -> [(Key, Value)] {
+        var stack = Stack<(Leaf.PathSegment, Node)>()
+        var elements = [(Key, Value)]()
+        guard let root = root else { return [] }
+        stack.push((Leaf.PathSegment(), root))
+        while (!stack.isEmpty) {
+            let curr = stack.pop()
+            let node = curr!.1
+            let path = curr!.0
+            switch node {
+            case .internalNode(let box):
+                if box.value.getValue() != nil {
+                    let data = Data(path + box.value.getPathSegment())
+                    let key = Key(data: data)!
+                    elements.append((key, box.value.getValue()!))
+                }
+                let nodeTuples = box.value.getChildren().map { (path + box.value.getPathSegment(), $0) }
+                stack.pushAll(nodeTuples)
+            case .leafNode(let leafType):
+                let data = Data(path + leafType.pathSegment)
+                let key = Key(data: data)!
+                elements.append((key, leafType.value))
+            }
+        }
+        return elements
+    }
     
     init(root: Node?) {
         self.root = root
@@ -195,27 +213,31 @@ extension PersistentMap: Codable where Key: LosslessStringConvertible, Value: Co
  Push and pop are O(1) operations.
  */
 fileprivate struct Stack<T> {
-  fileprivate var array = [T]()
+    fileprivate var array = [T]()
   
-  public var isEmpty: Bool {
-    return array.isEmpty
-  }
+    public var isEmpty: Bool {
+        return array.isEmpty
+    }
   
-  public var count: Int {
-    return array.count
-  }
+    public var count: Int {
+        return array.count
+    }
   
-  public mutating func push(_ element: T) {
-    array.append(element)
-  }
+    public mutating func push(_ element: T) {
+        array.append(element)
+    }
+    
+    public mutating func pushAll(_ elements: [T]) {
+        array.append(contentsOf: elements)
+    }
   
-  public mutating func pop() -> T? {
-    return array.popLast()
-  }
+    public mutating func pop() -> T? {
+        return array.popLast()
+    }
   
-  public var top: T? {
-    return array.last
-  }
+    public var top: T? {
+        return array.last
+    }
 }
 
 extension Stack: Sequence {
