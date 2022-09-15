@@ -11,7 +11,7 @@ public struct PersistentMap<Key: DataEncodable, Value> {
         self.init(root: nil)
     }
     
-    public init(dictionaryLiteral elements: [(Key, Value)]) {
+    public init(elements: [(Key, Value)]) {
         self = elements.reduce(Self()) { result, entry in
             return result.setting(key: entry.0, to: entry.1)
         }
@@ -190,21 +190,42 @@ extension PersistentMap: Equatable where Value: Equatable {
 }
 
 extension PersistentMap: Codable where Key: LosslessStringConvertible, Value: Codable {
-    public init(from decoder: Decoder) throws {
-        let container = try decoder.singleValueContainer()
-        let stringDictionary = try container.decode([String: Value].self)
-        var elements = [(Key, Value)]()
-        for (stringKey, value) in stringDictionary {
-            guard let key = Key(stringKey) else {
-                throw DecodingError.dataCorruptedError(in: container, debugDescription: "Invalid key '\(stringKey)'")
-            }
-            elements.append((key, value))
+    
+    public struct DynamicCodingKeys: CodingKey {
+        public var stringValue: String
+        
+        public init?(stringValue: String) {
+            self.stringValue = stringValue
         }
-        self.init(dictionaryLiteral: elements)
+        
+        public var intValue: Int?
+        
+        public init?(intValue: Int) {
+            return nil
+        }
+    }
+    
+    public init(from decoder: Decoder) throws {
+        var elements = [(Key, Value)]()
+        let container = try decoder.container(keyedBy: DynamicCodingKeys.self)
+        for key in container.allKeys {
+            guard let decodedKey = Key(key.stringValue) else {
+                throw DecodingError.dataCorruptedError(forKey: key, in: container, debugDescription: "Invalid Key: \(key.stringValue)")
+            }
+            guard let codingKey = DynamicCodingKeys(stringValue: key.stringValue), let decodedValue = try? container.decode(Value.self, forKey: codingKey) else {
+                throw DecodingError.dataCorruptedError(forKey: key, in: container, debugDescription: "Invalid Value for Key: \(key.stringValue)")
+            }
+            elements.append((decodedKey, decodedValue))
+        }
+        self.init(elements: elements)
     }
     
     public func encode(to encoder: Encoder) throws {
-        
+        var container = encoder.container(keyedBy: DynamicCodingKeys.self)
+        let elements = self.getElements()
+        for element in elements {
+            try container.encode(element.1, forKey: DynamicCodingKeys(stringValue: element.0.description)!)
+        }
     }
 }
 

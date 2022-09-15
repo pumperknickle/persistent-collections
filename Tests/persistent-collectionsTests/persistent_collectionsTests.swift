@@ -6,11 +6,11 @@ import Bedrock
 
 final class Persistent_Collections_Tests: QuickSpec {
     override func spec() {
-        describe("Map functionality") {
-            let keyValuePairs = (0...10000).map { _ in (UUID.init().uuidString.dropRandom(), UUID.init().uuidString) }
+        describe("Persistent Map") {
+            let keyValuePairs = (0...1000).map { _ in (UUID.init().uuidString.dropRandom(), UUID.init().uuidString) }
             var map: PersistentMap<String, String> = PersistentMap<String, String>()
             it("can set and get") {
-                let tuples = (0...10000).map { _ in (UUID.init().uuidString, UUID.init().uuidString) }
+                let tuples = (0...1000).map { _ in (UUID.init().uuidString, UUID.init().uuidString) }
                 map = tuples.reduce(PersistentMap<String, String>()) { partialResult, tuple in
                     return partialResult.setting(key: tuple.0, to: tuple.1)
                 }
@@ -31,7 +31,7 @@ final class Persistent_Collections_Tests: QuickSpec {
                     expect(map.get(key: key)).to(beNil())
                 }
             }
-            let keyValuePairs2 = (0...10000).map { _ in (UUID.init().uuidString.dropRandom() + "R", UUID.init().uuidString) }
+            let keyValuePairs2 = (0...1000).map { _ in (UUID.init().uuidString.dropRandom() + "R", UUID.init().uuidString) }
             let map1 = keyValuePairs.reduce(PersistentMap<String, String>()) { partialResult, tuple in
                 return partialResult.setting(key: tuple.0, to: tuple.1)
             }
@@ -50,7 +50,7 @@ final class Persistent_Collections_Tests: QuickSpec {
                 }
             }
             it("can get all elements") {
-                let keyValuePairs3 = (0...10000).map { _ in (UUID.init().uuidString, UUID.init().uuidString) }
+                let keyValuePairs3 = (0...1000).map { _ in (UUID.init().uuidString, UUID.init().uuidString) }
                 let map3 = keyValuePairs3.reduce(PersistentMap<String, String>()) { partialResult, tuple in
                     return partialResult.setting(key: tuple.0, to: tuple.1)
                 }
@@ -60,8 +60,8 @@ final class Persistent_Collections_Tests: QuickSpec {
                     expect(map3.get(key: key)).to(equal(value))
                 }
             }
-            let keyValuePairs3 = (0...10000).map { _ in (UUID.init().uuidString.dropRandom(), UUID.init().uuidString) }
-            let keyValuePairs4 = (0...10000).map { _ in (UUID.init().uuidString.dropRandom(), UUID.init().uuidString) }
+            let keyValuePairs3 = (0...1000).map { _ in (UUID.init().uuidString.dropRandom(), UUID.init().uuidString) }
+            let keyValuePairs4 = (0...1000).map { _ in (UUID.init().uuidString.dropRandom(), UUID.init().uuidString) }
             let map3 = keyValuePairs3.reduce(PersistentMap<String, String>()) { partialResult, tuple in
                 return partialResult.setting(key: tuple.0, to: tuple.1)
             }
@@ -82,6 +82,12 @@ final class Persistent_Collections_Tests: QuickSpec {
                 for (key, value) in elements {
                     expect(finalMap.get(key: key)).to(equal(value))
                 }
+            }
+            it("coding") {
+                let map6 = PersistentMap<String, String>().setting(key: "a", to: "a").setting(key: "b", to: "b")
+                let coded = try! JSONEncoder().encode(map6)
+                let map7 = try! JSONDecoder().decode(PersistentMap<String, String>.self, from: coded)
+                expect(map7).to(equal(map6))
             }
         }
     }
