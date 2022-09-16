@@ -89,6 +89,20 @@ final class Persistent_Collections_Tests: QuickSpec {
                 let map7 = try! JSONDecoder().decode(PersistentMap<String, String>.self, from: coded)
                 expect(map7).to(equal(map6))
             }
+            it("count greater than") {
+                let count1 = map1.getElements().count
+                expect(map1.countGreaterOrEqual(to: count1)).to(beTrue())
+                expect(map1.countGreaterOrEqual(to: count1 + 1)).to(beFalse())
+                let count2 = map2.getElements().count
+                expect(map2.countGreaterOrEqual(to: count2)).to(beTrue())
+                expect(map2.countGreaterOrEqual(to: count2 + 1)).to(beFalse())
+                let count3 = map3.getElements().count
+                expect(map3.countGreaterOrEqual(to: count3)).to(beTrue())
+                expect(map3.countGreaterOrEqual(to: count3 + 1)).to(beFalse())
+                let count4 = map4.getElements().count
+                expect(map4.countGreaterOrEqual(to: count4)).to(beTrue())
+                expect(map4.countGreaterOrEqual(to: count4 + 1)).to(beFalse())
+            }
         }
     }
 }

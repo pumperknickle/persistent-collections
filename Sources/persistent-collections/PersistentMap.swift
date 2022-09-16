@@ -44,6 +44,35 @@ public struct PersistentMap<Key: DataEncodable, Value> {
         return elements
     }
     
+    public func countGreaterOrEqual(to target: Int) -> Bool {
+        if target == 0 { return true }
+        var stack = Stack<(Leaf.PathSegment, Node)>()
+        var currentCount = 0
+        guard let root = root else { return false }
+        stack.push((Leaf.PathSegment(), root))
+        while (!stack.isEmpty) {
+            let curr = stack.pop()
+            let node = curr!.1
+            let path = curr!.0
+            switch node {
+            case .internalNode(let box):
+                if box.value.getValue() != nil {
+                    currentCount += 1
+                }
+                let nodeTuples = box.value.getChildren().map { (path + box.value.getPathSegment(), $0) }
+                stack.pushAll(nodeTuples)
+                if stack.count + currentCount >= target { return true }
+            case .leafNode:
+                currentCount += 1
+            }
+        }
+        return currentCount >= target
+    }
+    
+    public func isEmpty() -> Bool {
+        return root == nil
+    }
+    
     init(root: Node?) {
         self.root = root
     }
