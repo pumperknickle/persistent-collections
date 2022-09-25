@@ -7,6 +7,18 @@ public struct PersistentMap<Key: DataEncodable, Value> {
     typealias Node = Internal.Node
     private let root: Node?
     
+    public var count: Int {
+        guard let root = root else {
+            return 0
+        }
+        switch root {
+        case .internalNode(let box):
+            return box.value.count()
+        case .leafNode:
+            return 1
+        }
+    }
+    
     public init() {
         self.init(root: nil)
     }
@@ -17,10 +29,36 @@ public struct PersistentMap<Key: DataEncodable, Value> {
         }
     }
     
+    public func getFirstElement() -> (Key, Value)? {
+        guard let root = root else { return nil }
+        var stack = Stack<(Leaf.PathSegment, Node)>()
+        stack.push((Leaf.PathSegment(), root))
+        while (!stack.isEmpty) {
+            let curr = stack.pop()
+            let node = curr!.1
+            let path = curr!.0
+            switch node {
+            case .internalNode(let box):
+                if box.value.getValue() != nil {
+                    let data = Data(path + box.value.getPathSegment())
+                    let key = Key(data: data)!
+                    return (key, box.value.getValue()!)
+                }
+                let nodeTuples = box.value.getChildren().map { (path + box.value.getPathSegment(), $0) }
+                stack.push(nodeTuples.first!)
+            case .leafNode(let leafType):
+                let data = Data(path + leafType.pathSegment)
+                let key = Key(data: data)!
+                return (key, leafType.value)
+            }
+        }
+        return nil
+    }
+    
     public func getElements() -> [(Key, Value)] {
+        guard let root = root else { return [] }
         var stack = Stack<(Leaf.PathSegment, Node)>()
         var elements = [(Key, Value)]()
-        guard let root = root else { return [] }
         stack.push((Leaf.PathSegment(), root))
         while (!stack.isEmpty) {
             let curr = stack.pop()
@@ -46,9 +84,9 @@ public struct PersistentMap<Key: DataEncodable, Value> {
     
     public func countGreaterOrEqual(to target: Int) -> Bool {
         if target == 0 { return true }
+        guard let root = root else { return false }
         var stack = Stack<(Leaf.PathSegment, Node)>()
         var currentCount = 0
-        guard let root = root else { return false }
         stack.push((Leaf.PathSegment(), root))
         while (!stack.isEmpty) {
             let curr = stack.pop()

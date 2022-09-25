@@ -29,6 +29,10 @@ struct InternalNode<V> {
         return nil
     }
     
+    func count() -> Int {
+        return leaves.count + nodes.map { $0.value.count() }.reduce(0, +) + (value != nil ? 1 : 0)
+    }
+    
     func getValue() -> V? {
         return value
     }
