@@ -89,4 +89,22 @@ public struct ArrayTrie<Key: DataEncodable, Value> {
         let childNode = firstChild.1.changing(prefix: path + firstChild.1.prefix)
         return Self(children: ChildMap().setting(key: firstKey, to: childNode))
     }
+    
+    public func getElements() -> [([Key], Value)] {
+        var stack = Stack<([Key], Node)>()
+        var elements = [([Key], Value)]()
+        stack.pushAll(children.getElements().map { ([$0.0], $0.1) })
+        while (!stack.isEmpty) {
+            let curr = stack.pop()
+            let node = curr!.1
+            let path = curr!.0
+            if node.value != nil {
+                elements.append((path, node.value!))
+            }
+            for tuple in node.children.value.getElements() {
+                stack.push((path + tuple.1.prefix, tuple.1))
+            }
+        }
+        return elements
+    }
 }

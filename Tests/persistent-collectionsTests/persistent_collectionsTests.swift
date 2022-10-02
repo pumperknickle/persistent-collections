@@ -28,6 +28,14 @@ final class Persistent_Collections_Tests: QuickSpec {
             let arrayTrie = keyValuePairs.reduce(ArrayTrie<String, Int>()) { result, element in
                 return result.setting(keys: element.0, value: element.1)
             }
+            it("can get elements") {
+                let trie = keyValuePairs.reduce(ArrayTrie<String, Int>()) { result, element in
+                    return result.setting(keys: element.0, value: element.1)
+                }
+                for tuple in trie.getElements() {
+                    expect(trie.get(keys: tuple.0)).to(equal(tuple.1))
+                }
+            }
             it("count") {
                 let keyValuePairsUnique: [([String], Int)] = (0...100).map { _ in
                     let numberOfKeys = Int.random(in: 1...20)
