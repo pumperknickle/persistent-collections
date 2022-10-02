@@ -1,6 +1,5 @@
 import Foundation
 import Bedrock
-import Algorithms
 
 struct InternalNode<V> {
     typealias LeafType = LeafNode<V>
