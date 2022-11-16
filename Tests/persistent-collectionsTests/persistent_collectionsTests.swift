@@ -6,6 +6,10 @@ import Bedrock
 
 final class Persistent_Collections_Tests: QuickSpec {
     override func spec() {
+        describe("LinkedList") {
+            let list = LinkedList<Int>()
+            expect(list.appending(element: 0).appending(element: 1).appending(element: 2).toArray()).to(equal([0,1,2]))
+        }
         describe("Persistent Array Trie") {
             let keyValuePairs: [([String], Int)] = (0...100).map { _ in
                 let numberOfKeys = Int.random(in: 1...20)
@@ -89,10 +93,10 @@ final class Persistent_Collections_Tests: QuickSpec {
             let keyValuePairs = (0...1000).map { _ in (UUID.init().uuidString.dropRandom(), UUID.init().uuidString) }
             var map: PersistentMap<String, String> = PersistentMap<String, String>()
             let tuples = (0...1000).map { _ in (UUID.init().uuidString, UUID.init().uuidString) }
+            map = tuples.reduce(PersistentMap<String, String>()) { partialResult, tuple in
+                return partialResult.setting(key: tuple.0, to: tuple.1)
+            }
             it("can set and get") {
-                map = tuples.reduce(PersistentMap<String, String>()) { partialResult, tuple in
-                    return partialResult.setting(key: tuple.0, to: tuple.1)
-                }
                 for tuple in tuples {
                     expect(map.get(key: tuple.0)).toNot(beNil())
                 }
