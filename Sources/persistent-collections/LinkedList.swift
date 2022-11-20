@@ -11,11 +11,11 @@ public struct LinkedList<Element> {
         self.tail = tail
     }
     
-    func appending(element: Element) -> Self {
+    public func appending(element: Element) -> Self {
         return Self(tail: Box((element, self)))
     }
     
-    func toArray() -> [Element] {
+    public func toArray() -> [Element] {
         var arrayToReturn = Array<Element>()
         var current = tail
         while (current != nil) {
