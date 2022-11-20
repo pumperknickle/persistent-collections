@@ -1,6 +1,6 @@
 import Foundation
 
-struct LinkedList<Element> {
+public struct LinkedList<Element> {
     private let tail: Box<(Element, Self)>?
     
     public init() {

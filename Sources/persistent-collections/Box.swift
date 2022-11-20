@@ -5,7 +5,7 @@ final class Ref<T> {
   init(_ v : T) {val = v}
 }
 
-struct Box<T> {
+public struct Box<T> {
     var ref : Ref<T>
     init(_ x : T) { ref = Ref(x) }
 
@@ -22,7 +22,7 @@ struct Box<T> {
 }
 
 extension Box: Equatable where T: Equatable {
-    static func == (lhs: Self, rhs: Self) -> Bool {
+    public static func == (lhs: Self, rhs: Self) -> Bool {
         return lhs.value == rhs.value
     }
 }
