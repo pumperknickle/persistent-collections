@@ -90,6 +90,14 @@ public struct ArrayTrie<Key: DataEncodable, Value> {
         return Self(children: ChildMap().setting(key: firstKey, to: childNode))
     }
     
+    public func merge(with other: Self, combine: (Value, Value) -> Value) -> Self {
+        return Self(children: self.children.merge(other: other.children, combine: { return $0.merge(with: $1, combine: combine) }))
+    }
+    
+    public func overwrite(with other: Self) -> Self {
+        return Self(children: self.children.merge(other: other.children, combine: { return $0.merge(with: $1, combine: { return $1 }) }))
+    }
+    
     public func getElements() -> [([Key], Value)] {
         var stack = Stack<([Key], Node)>()
         var elements = [([Key], Value)]()

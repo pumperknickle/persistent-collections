@@ -44,4 +44,8 @@ public struct ArrayTrieSet<Key: DataEncodable> {
     public func removing(_ keys: [Key]) -> Self {
         return Self(trie: trie.deleting(keys: keys))
     }
+    
+    public func overwrite(with other: Self) -> Self {
+        return Self(trie: self.trie.overwrite(with: other.trie))
+    }
 }

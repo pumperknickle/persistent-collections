@@ -11,7 +11,7 @@ final class Persistent_Collections_Tests: QuickSpec {
             expect(list.appending(element: 0).appending(element: 1).appending(element: 2).toArray()).to(equal([0,1,2]))
         }
         describe("Persistent Array Trie") {
-            let keyValuePairs: [([String], Int)] = (0...100).map { _ in
+            let arrayKeyValuePairs: [([String], Int)] = (0...100).map { _ in
                 let numberOfKeys = Int.random(in: 1...20)
                 let keys: [String] = Array(repeating: 0, count: numberOfKeys).map { _ in String(Int.random(in: 0...10)) }
                 let value = numberOfKeys
@@ -29,11 +29,11 @@ final class Persistent_Collections_Tests: QuickSpec {
                 let value = numberOfKeys
                 return (keys, value)
             }
-            let arrayTrie = keyValuePairs.reduce(ArrayTrie<String, Int>()) { result, element in
+            let arrayTrie = arrayKeyValuePairs.reduce(ArrayTrie<String, Int>()) { result, element in
                 return result.setting(keys: element.0, value: element.1)
             }
             it("can get elements") {
-                let trie = keyValuePairs.reduce(ArrayTrie<String, Int>()) { result, element in
+                let trie = arrayKeyValuePairs.reduce(ArrayTrie<String, Int>()) { result, element in
                     return result.setting(keys: element.0, value: element.1)
                 }
                 for tuple in trie.getElements() {
@@ -53,20 +53,20 @@ final class Persistent_Collections_Tests: QuickSpec {
                 expect(uniqueTrie.count).to(equal(keyValuePairsUnique.count))
             }
             it("can set and get") {
-                for keyValuePair in keyValuePairs {
+                for keyValuePair in arrayKeyValuePairs {
                     expect(arrayTrie.get(keys:keyValuePair.0)).to(equal(keyValuePair.1))
                 }
             }
             it("supertree test") {
                 let barSuperTree = arrayTrie.supertree(path: ["bar"])
-                for keyValuePair in keyValuePairs {
+                for keyValuePair in arrayKeyValuePairs {
                     expect(barSuperTree.get(keys:["bar"] + keyValuePair.0)).to(equal(keyValuePair.1))
                 }
             }
             it("subtree test") {
                 let barSuperTree = arrayTrie.supertree(path: ["bar"])
                 let subtree = barSuperTree.subtree(path: ["bar"])
-                for keyValuePair in keyValuePairs {
+                for keyValuePair in arrayKeyValuePairs {
                     expect(subtree.get(keys:keyValuePair.0)).to(equal(keyValuePair.1))
                 }
             }
@@ -88,6 +88,21 @@ final class Persistent_Collections_Tests: QuickSpec {
                     expect(fooTree.get(keys:keyValuePair.0)).to(equal(keyValuePair.1))
                 }
             }
+            it("can merge") {
+                let trivialTrie = ArrayTrie().setting(keys: ["foo", "bar"], value: 1).setting(keys: ["bar", "foo"], value: 2).setting(keys: ["bar", "foo", "buzz"], value: 3).setting(keys: ["foo"], value: 4).setting(keys: ["bar", "foo", "buzzy"], value: 5).setting(keys: ["bar", "foo", "buzzys"], value: 9)
+                let trieForOverwriting = ArrayTrie().setting(keys: ["foo"], value: 6).setting(keys: ["bar", "foo", "buzz"], value: 7).setting(keys: ["bar", "foo", "buzzy"], value: 8)
+                let merged = trivialTrie.overwrite(with: trieForOverwriting)
+                expect(merged.get(keys: ["foo", "bar"])).to(equal(1))
+                expect(merged.get(keys: ["bar", "foo"])).to(equal(2))
+                expect(merged.get(keys: ["bar", "foo", "buzz"])).to(equal(7))
+                expect(merged.get(keys: ["foo"])).to(equal(6))
+                expect(merged.get(keys: ["bar", "foo", "buzzy"])).to(equal(8))
+                expect(merged.get(keys: ["bar", "foo", "buzzys"])).to(equal(9))
+                let mergedTrie = arrayTrie.merge(with: arrayTrie, combine: { return $1 })
+                for tuple in arrayKeyValuePairs {
+                    expect(mergedTrie.contains(keys: tuple.0)).to(beTrue())
+                }
+            }
         }
         describe("Persistent Map") {
             let keyValuePairs = (0...1000).map { _ in (UUID.init().uuidString.dropRandom(), UUID.init().uuidString) }
@@ -97,6 +112,9 @@ final class Persistent_Collections_Tests: QuickSpec {
                 return partialResult.setting(key: tuple.0, to: tuple.1)
             }
             it("can set and get") {
+                map = tuples.reduce(PersistentMap<String, String>()) { partialResult, tuple in
+                    return partialResult.setting(key: tuple.0, to: tuple.1)
+                }
                 for tuple in tuples {
                     expect(map.get(key: tuple.0)).toNot(beNil())
                 }

@@ -161,10 +161,10 @@ public struct PersistentMap<Key: DataEncodable, Value> {
     }
     
     public func overwrite(with other: Self) -> Self {
-        return merge(other: other, overwrite: { return $1 })
+        return merge(other: other, combine: { return $1 })
     }
     
-    public func merge(other: Self, overwrite: (Value, Value) -> Value) -> Self {
+    public func merge(other: Self, combine: (Value, Value) -> Value) -> Self {
         guard let root = root else {
             return other
         }
@@ -175,19 +175,19 @@ public struct PersistentMap<Key: DataEncodable, Value> {
         case .internalNode(let box):
             switch otherRoot {
             case .internalNode(let otherBox):
-                let newMerged = box.value.merging(other: otherBox.value, overwrite: overwrite)
+                let newMerged = box.value.merging(other: otherBox.value, overwrite: combine)
                 return Self(root: Node.internalNode(Box(newMerged)))
             case .leafNode(let otherLeafType):
-                let result = box.value.combining(key: otherLeafType.pathSegment, keyIndex: 0, value: otherLeafType.value, combine: overwrite, replace: true)
+                let result = box.value.combining(key: otherLeafType.pathSegment, keyIndex: 0, value: otherLeafType.value, combine: combine, replace: true)
                 return Self(root: Node.internalNode(Box(result)))
             }
         case .leafNode(let leafType):
             switch otherRoot {
             case .internalNode(let box):
-                let result = box.value.combining(key: leafType.pathSegment, keyIndex: 0, value: leafType.value, combine: overwrite, replace: false)
+                let result = box.value.combining(key: leafType.pathSegment, keyIndex: 0, value: leafType.value, combine: combine, replace: false)
                 return Self(root: Node.internalNode(Box(result)))
             case .leafNode(let otherLeafType):
-                let result = InternalNode.combining(leftLeaf: leafType, rightLeaf: otherLeafType, combine: overwrite)
+                let result = InternalNode.combining(leftLeaf: leafType, rightLeaf: otherLeafType, combine: combine)
                 switch result {
                 case .internalNode:
                     return Self(root: result)

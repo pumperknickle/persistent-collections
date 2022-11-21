@@ -154,7 +154,7 @@ struct ArrayTrieNode<Key: DataEncodable, Value> {
                 let newChildren = children.value.setting(key: firstSuffix, to: node.changing(prefix: suffix))
                 return changing(children: newChildren)
             }
-            let newChildren = children.value.setting(key: firstSuffix, to: node.changing(prefix: suffix).merge(with: currentChild, combine: combine))
+            let newChildren = children.value.setting(key: firstSuffix, to: currentChild.merge(with: node.changing(prefix: suffix), combine: combine))
             return changing(children: newChildren)
         }
         let commonPrefix = node.prefix ~> prefix
