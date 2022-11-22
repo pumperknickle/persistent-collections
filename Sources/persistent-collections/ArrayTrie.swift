@@ -115,4 +115,8 @@ public struct ArrayTrie<Key: DataEncodable, Value> {
         }
         return elements
     }
+    
+    public func getChildKeys() -> [Key] {
+        return children.getKeys()
+    }
 }

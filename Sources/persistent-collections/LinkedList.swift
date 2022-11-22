@@ -11,6 +11,14 @@ public struct LinkedList<Element> {
         self.tail = tail
     }
     
+    public init(array: [Element]) {
+        var linkedList = Self()
+        for element in array.reversed() {
+            linkedList = Self(tail: Box((element, linkedList)))
+        }
+        self = linkedList
+    }
+    
     public func appending(element: Element) -> Self {
         return Self(tail: Box((element, self)))
     }

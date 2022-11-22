@@ -8,6 +8,7 @@ final class Persistent_Collections_Tests: QuickSpec {
     override func spec() {
         describe("LinkedList") {
             let list = LinkedList<Int>()
+            expect(LinkedList(array: [1,2,3,4]).toArray()).to(equal([1,2,3,4]))
             expect(list.appending(element: 0).appending(element: 1).appending(element: 2).toArray()).to(equal([0,1,2]))
         }
         describe("Persistent Array Trie") {
@@ -102,6 +103,10 @@ final class Persistent_Collections_Tests: QuickSpec {
                 for tuple in arrayKeyValuePairs {
                     expect(mergedTrie.contains(keys: tuple.0)).to(beTrue())
                 }
+            }
+            it("can get child keys") {
+                let trivialTrie = ArrayTrie().setting(keys: ["foo", "bar"], value: 1).setting(keys: ["bar", "foo"], value: 2).setting(keys: ["bar", "foo", "buzz"], value: 3).setting(keys: ["foo"], value: 4).setting(keys: ["bar", "foo", "buzzy"], value: 5).setting(keys: ["bar", "foo", "buzzys"], value: 9)
+                expect(trivialTrie.getChildKeys()).to(equal(["foo", "bar"]))
             }
         }
         describe("Persistent Map") {

@@ -55,6 +55,10 @@ public struct PersistentMap<Key: DataEncodable, Value> {
         return nil
     }
     
+    public func getKeys() -> [Key] {
+        return getElements().map { $0.0 }
+    }
+    
     public func getElements() -> [(Key, Value)] {
         guard let root = root else { return [] }
         var stack = Stack<(Leaf.PathSegment, Node)>()

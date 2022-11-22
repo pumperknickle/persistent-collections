@@ -48,4 +48,8 @@ public struct ArrayTrieSet<Key: DataEncodable> {
     public func overwrite(with other: Self) -> Self {
         return Self(trie: self.trie.overwrite(with: other.trie))
     }
+    
+    public func getChildKeys() -> [Key] {
+        return trie.getChildKeys()
+    }
 }
