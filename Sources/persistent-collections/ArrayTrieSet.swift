@@ -53,3 +53,5 @@ public struct ArrayTrieSet<Key: DataEncodable> {
         return trie.getChildKeys()
     }
 }
+
+extension ArrayTrieSet: Codable where Key: Codable & LosslessStringConvertible { }

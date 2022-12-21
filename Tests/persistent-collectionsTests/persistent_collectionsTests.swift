@@ -11,6 +11,27 @@ final class Persistent_Collections_Tests: QuickSpec {
             expect(LinkedList(array: [1,2,3,4]).toArray()).to(equal([1,2,3,4]))
             expect(list.appending(element: 0).appending(element: 1).appending(element: 2).toArray()).to(equal([0,1,2]))
         }
+        describe("Persistent Array Trie Set") {
+            let keys: [[String]] = (0...100).map { _ in
+                let numberOfKeys = Int.random(in: 1...20)
+                let keys: [String] = Array(repeating: 0, count: numberOfKeys).map { _ in String(Int.random(in: 0...10)) }
+                return keys
+            }
+            let arrayTrieSet = keys.reduce(ArrayTrieSet<String>()) { result, element in
+                return result.adding(element)
+            }
+            let reconstructed = try! JSONDecoder().decode(ArrayTrieSet<String>.self, from: try! JSONEncoder().encode(arrayTrieSet))
+            it("can get elements") {
+                for k in keys {
+                    expect(arrayTrieSet.contains(k)).to(beTrue())
+                }
+            }
+            it("can encode and decode") {
+                for k in keys {
+                    expect(reconstructed.contains(k)).to(beTrue())
+                }
+            }
+        }
         describe("Persistent Array Trie") {
             let arrayKeyValuePairs: [([String], Int)] = (0...100).map { _ in
                 let numberOfKeys = Int.random(in: 1...20)
@@ -54,8 +75,10 @@ final class Persistent_Collections_Tests: QuickSpec {
                 expect(uniqueTrie.count).to(equal(keyValuePairsUnique.count))
             }
             it("can set and get") {
+                let reconstructed = try! JSONDecoder().decode(ArrayTrie<String, Int>.self, from: try! JSONEncoder().encode(arrayTrie))
                 for keyValuePair in arrayKeyValuePairs {
                     expect(arrayTrie.get(keys:keyValuePair.0)).to(equal(keyValuePair.1))
+                    expect(reconstructed.get(keys:keyValuePair.0)).to(equal(keyValuePair.1))
                 }
             }
             it("supertree test") {

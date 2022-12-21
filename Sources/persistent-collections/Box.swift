@@ -7,9 +7,9 @@ final class Ref<T> {
 
 public struct Box<T> {
     var ref : Ref<T>
-    init(_ x : T) { ref = Ref(x) }
+    public init(_ x : T) { ref = Ref(x) }
 
-    var value: T {
+    public var value: T {
         get { return ref.val }
         set {
           if (!isKnownUniquelyReferenced(&ref)) {

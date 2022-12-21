@@ -120,3 +120,20 @@ public struct ArrayTrie<Key: DataEncodable, Value> {
         return children.getKeys()
     }
 }
+
+extension ArrayTrie: Codable where Key: Codable & LosslessStringConvertible, Value: Codable {
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let decodedChildren = try container.decode(ChildMap.self, forKey: .children)
+        self.init(children: decodedChildren)
+    }
+    
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(children, forKey: .children)
+    }
+    
+    private enum CodingKeys: String, CodingKey {
+        case children
+    }
+}

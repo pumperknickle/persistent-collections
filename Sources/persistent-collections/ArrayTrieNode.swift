@@ -164,6 +164,27 @@ struct ArrayTrieNode<Key: DataEncodable, Value> {
     }
 }
 
+extension ArrayTrieNode: Codable where Key: Codable & LosslessStringConvertible, Value: Codable {
+    private enum CodingKeys: String, CodingKey {
+        case prefix, value, children
+    }
+    
+    internal init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let prefix = try container.decode([Key].self, forKey: .prefix)
+        let value = try container.decode(Value?.self, forKey: .value)
+        let children = try container.decode(ChildMap.self, forKey: .children)
+        self.init(prefix: prefix, value: value, children: Box(children))
+    }
+    
+    internal func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(prefix, forKey: .prefix)
+        try container.encode(value, forKey: .value)
+        try container.encode(children.value, forKey: .children)
+    }
+}
+
 extension ArrayTrieNode where Key == String, Value == Singleton {
     func parse(children: ChildMap, tokens: [ArrayTrieToken]) -> (ChildMap, [ArrayTrieToken])? {
         guard let firstToken = tokens.first else { return (children, []) }
