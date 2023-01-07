@@ -12,6 +12,8 @@ public struct NAVArrayTrie<Key: DataEncodable, Value> {
         self.rootAncestorValue = rootAncestorValue
     }
     
+    public var ancestorValue: Value? { return rootAncestorValue }
+    
     public func subtreeWithCover(keys: [Key]) -> Self {
         guard let firstKey = keys.first else { return self }
         guard let childNode = trie.children.get(key: firstKey) else { return Self(trie: TrieType(), rootAncestorValue: rootAncestorValue) }
